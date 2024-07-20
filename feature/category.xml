@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+  <feature url="features/com.asti.fordiac.deployment_3.1.0.qualifier.jar" id="com.asti.fordiac.deployment" version="3.1.0.qualifier">
+    <category name="com.asti.fordiac.deployment" label="Aimirim 4diac Plugins"/>
+  </feature>
+  <category-def name="com.asti.fordiac.deployment" label="Aimirim 4diac Plugins">
+    <description>
+      Additional deployment devices added by Aimirim STI to 4diac IDE.
+    </description>
+  </category-def>
+</site>

@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Aimirim UAO Deployment
+Bundle-SymbolicName: com.asti.fordiac.ide.deployment.uao;singleton:=true
+Bundle-Version: 3.1.0.qualifier
+Bundle-Vendor: Aimirim STI
+Automatic-Module-Name: com.asti.fordiac.ide.deployment.uao
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.fordiac.ide.ui;bundle-version="[3.0.0,4.0.0)",
+ org.eclipse.fordiac.ide.deployment;bundle-version="[3.0.0,4.0.0)",
+ org.eclipse.fordiac.ide.deployment.iec61499;bundle-version="[3.0.0,4.0.0)",
+ com.google.gson;bundle-version="2.10.1",
+ com.neovisionaries.ws.client;bundle-version="2.14.0",
+ org.apache.httpcomponents.httpcore,
+ org.apache.httpcomponents.httpclient,
+ org.apache.commons.commons-codec,
+ bcprov;bundle-version="[1.65.0,2.0.0]"
+Export-Package: com.asti.fordiac.ide.deployment.uao
