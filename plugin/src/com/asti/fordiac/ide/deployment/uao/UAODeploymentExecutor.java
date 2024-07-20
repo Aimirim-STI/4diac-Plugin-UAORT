@@ -41,6 +41,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.xmi.XMLResource;
 import org.eclipse.emf.ecore.xmi.impl.XMLResourceImpl;
+import org.eclipse.fordiac.ide.deployment.Activator;
 import org.eclipse.fordiac.ide.deployment.data.ConnectionDeploymentData;
 import org.eclipse.fordiac.ide.deployment.data.FBDeploymentData;
 import org.eclipse.fordiac.ide.deployment.devResponse.Response;
@@ -48,9 +49,6 @@ import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
 import org.eclipse.fordiac.ide.deployment.iec61499.ResponseMapping;
 import org.eclipse.fordiac.ide.deployment.interactors.IDeviceManagementInteractor;
 import org.eclipse.fordiac.ide.deployment.monitoringbase.MonitoringBaseElement;
-import com.asti.fordiac.ide.deployment.uao.helpers.Constants;
-import com.asti.fordiac.ide.deployment.uao.helpers.UAOClient;
-import com.asti.fordiac.ide.deployment.uao.helpers.WatchItem;
 import org.eclipse.fordiac.ide.deployment.util.DeploymentHelper;
 import org.eclipse.fordiac.ide.deployment.util.IDeploymentListener;
 import org.eclipse.fordiac.ide.model.libraryElement.Device;
@@ -59,12 +57,14 @@ import org.eclipse.fordiac.ide.model.libraryElement.FBNetworkElement;
 import org.eclipse.fordiac.ide.model.libraryElement.IInterfaceElement;
 import org.eclipse.fordiac.ide.model.libraryElement.Resource;
 import org.eclipse.fordiac.ide.model.libraryElement.VarDeclaration;
-import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import com.asti.fordiac.ide.deployment.uao.helpers.Constants;
+import com.asti.fordiac.ide.deployment.uao.helpers.UAOClient;
+import com.asti.fordiac.ide.deployment.uao.helpers.WatchItem;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -104,14 +104,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		@Override
 		public void onConnected(final WebSocket websocket, final Map<String, List<String>> headers) {
 			connectionStatus = ConnectionStatus.CONNECTED;
-			FordiacLogHelper.logWarning("UAOClient Connected!"); //$NON-NLS-1$
+			Activator.getDefault().logWarning("UAOClient Connected!"); //$NON-NLS-1$
 		}
 
 		@Override
 		public void onDisconnected(final WebSocket websocket, final WebSocketFrame serverCloseFrame,
 				final WebSocketFrame clientCloseFrame, final boolean closedByServer) throws DeploymentException {
 			connectionStatus = ConnectionStatus.DISCONNECTED;
-			FordiacLogHelper.logWarning("UAOClient Disconnected!"); //$NON-NLS-1$
+			Activator.getDefault().logWarning("UAOClient Disconnected!"); //$NON-NLS-1$
 		}
 	};
 
@@ -167,7 +167,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 						error = e.getMessage();
 					}
 					client.regenKeyPair();
-					FordiacLogHelper.logInfo("UAODeploymentExecutor | Auth retry " + (retry + 1)); //$NON-NLS-1$
+					Activator.getDefault().logInfo("UAODeploymentExecutor | Auth retry " + (retry + 1)); //$NON-NLS-1$
 					retry++;
 				}
 
@@ -218,12 +218,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void writeResourceParameter(final Resource resource, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeResourceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// Activator.getDefault().logInfo("UAODeploymentExecutor |
+		// writeResourceParameter "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
 	public void writeDeviceParameter(final Device device, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// Activator.getDefault().logInfo("UAODeploymentExecutor | writeDeviceParameter
+		// "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
@@ -277,7 +279,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startFB(final Resource res, final FBDeploymentData fbData) throws DeploymentException {
-//		FordiacLogHelper.logInfo("UAODeploymentExecutor | startFB"); //$NON-NLS-1$
+//		Activator.getDefault().logInfo("UAODeploymentExecutor | startFB"); //$NON-NLS-1$
 	}
 
 	@Override
@@ -293,16 +295,16 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		fbNetwork.appendChild(eventConnection);
 		fbNetwork.appendChild(dataConnection);
 		// Start deploy
-        client.connectionCheck();
+		client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.deploy(deployXml, projectGuid, snapshotGuid);
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		Activator.getDefault().logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-        // Appears not to be needed.
+		// Appears not to be needed.
 	}
 
 	@Override
@@ -311,7 +313,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		Activator.getDefault().logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
@@ -356,7 +358,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 						forceResponse = client.forceQuery(res.getName());
 					} catch (final DeploymentException e) {
 						e.printStackTrace();
-						FordiacLogHelper.logError(e.getMessage());
+						Activator.getDefault().logError(e.getMessage());
 						// Thread.currentThread().interrupt();
 						throw e;
 					}
@@ -409,7 +411,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			}
 			watch_items.get(resName).add(wele);
 			watchid += 1;
-			FordiacLogHelper.logInfo("UAODeploymentExecutor | addWatch " + portPath + " Added"); //$NON-NLS-1$ //$NON-NLS-2$
+			Activator.getDefault().logInfo("UAODeploymentExecutor | addWatch " + portPath + " Added"); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
 
@@ -430,7 +432,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 					final boolean check = client.removeWatch(resName, id);
 					if (check) {
 						watch_items.get(resName).remove(item);
-						FordiacLogHelper.logInfo("UAODeploymentExecutor | removeWatch " + portPath + " Removed"); //$NON-NLS-1$ //$NON-NLS-2$
+						Activator.getDefault().logInfo("UAODeploymentExecutor | removeWatch " + portPath + " Removed"); //$NON-NLS-1$ //$NON-NLS-2$
 					}
 				} catch (final DeploymentException e) {
 					throw e;
@@ -528,7 +530,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	private static boolean getUseSsl(final Device dev) throws DeploymentException {
 		for (final VarDeclaration varDecl : dev.getVarDeclarations()) {
 			if ("SSL".equalsIgnoreCase(varDecl.getName())) { //$NON-NLS-1$
-				final String val = DeploymentHelper.getVariableValue(varDecl);
+				final String val = DeploymentHelper.getVariableValue(varDecl, dev.getAutomationSystem());
 				if (null != val) {
 					return (Boolean.parseBoolean(val));
 				}
@@ -544,11 +546,10 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	 */
 	private UAOClient createClient(final Device dev) {
 		String mgrId = ""; //$NON-NLS-1$
-		try {
-			mgrId = DeploymentHelper.getMgrID(dev);
-		} catch (final DeploymentException e) {
-			FordiacLogHelper
-					.logError(MessageFormat.format(Messages.UAODeploymentExecutor_GetMgrIDFailed, e.getMessage()), e);
+		mgrId = DeploymentHelper.getMgrID(dev);
+		if (mgrId.equals("")) {
+			Activator.getDefault().logError(
+					MessageFormat.format(Messages.UAODeploymentExecutor_GetMgrIDFailed, "Empty MGR_ID value."));
 		}
 		// Remove Quotes from string
 		mgrId = mgrId.substring(1, mgrId.length() - 1);
@@ -557,8 +558,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		try {
 			ssl = getUseSsl(dev);
 		} catch (final DeploymentException e) {
-			FordiacLogHelper.logError(MessageFormat.format(Messages.UAODeploymentExecutor_GetSSLFailed, e.getMessage()),
-					e);
+			Activator.getDefault()
+					.logError(MessageFormat.format(Messages.UAODeploymentExecutor_GetSSLFailed, e.getMessage()), e);
 		}
 
 		UAOClient newClient = null;
@@ -566,7 +567,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			newClient = new UAOClient(mgrId, 0, ssl);
 			newClient.addListener(callbacks);
 		} catch (final DeploymentException e) {
-			FordiacLogHelper.logError(
+			Activator.getDefault().logError(
 					MessageFormat.format(Messages.UAODeploymentExecutor_ClientConnectionFailed, e.getMessage()), e);
 		}
 
@@ -622,7 +623,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final LocalDateTime now = LocalDateTime.now();
 		final String version = System.getProperty("org.eclipse.fordiac.ide.version"); //$NON-NLS-1$
 
-		final String projName = dev.getTypeEntry().getTypeLibrary().getSystems().keySet().toArray()[0].toString();
+		final String projName = "4diac Project"; //$NON-NLS-1$
 
 		final Element sysEl = doc.createElement("System"); //$NON-NLS-1$
 
@@ -782,7 +783,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			return (Constants.EMPTY_RESPONSE);
 		}
 		final String xml = xmlToString(doc);
-//		FordiacLogHelper.logInfo("Pooling: " + xml); //$NON-NLS-1$
+//		Activator.getDefault().logInfo("Pooling: " + xml); //$NON-NLS-1$
 		return parseXMLResponse(xml);
 	}
 

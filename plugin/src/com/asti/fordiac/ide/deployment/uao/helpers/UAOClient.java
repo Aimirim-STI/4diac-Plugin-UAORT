@@ -64,10 +64,10 @@ import org.bouncycastle.crypto.params.ECPublicKeyParameters;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
 import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
-import com.asti.fordiac.ide.deployment.uao.Messages;
-import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
+import org.eclipse.fordiac.ide.deployment.Activator;
 import org.w3c.dom.Document;
 
+import com.asti.fordiac.ide.deployment.uao.Messages;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -612,7 +612,7 @@ public class UAOClient {
 
 			@Override
 			public void onError(final WebSocket websocket, final WebSocketException cause) {
-				FordiacLogHelper.logError("UAOClient | Error:" + cause.getMessage()); //$NON-NLS-1$
+				Activator.getDefault().logError("UAOClient | Error:" + cause.getMessage()); //$NON-NLS-1$
 			}
 		});
 		return (websock);
@@ -667,7 +667,8 @@ public class UAOClient {
 		try {
 			cipher = Cipher.getInstance("AES/CTR/NoPadding", "BC"); //$NON-NLS-1$ //$NON-NLS-2$
 		} catch (NoSuchAlgorithmException | NoSuchProviderException | NoSuchPaddingException e) {
-			e.printStackTrace();
+			Activator.getDefault().logError("Cipher Instance failed. Message: " + e.getMessage()); //$NON-NLS-1$
+            e.printStackTrace();
 		} // Dummy Exception catch
 
 		final SecretKeySpec key = new SecretKeySpec(sharedSecret, "AES"); //$NON-NLS-1$
@@ -676,6 +677,7 @@ public class UAOClient {
 			try {
 				cipher.init(mode, key, param);
 			} catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
+                Activator.getDefault().logError("Cipher Initialization failed. Message: " + e.getMessage()); //$NON-NLS-1$
 				e.printStackTrace();
 			} // Dummy Exception catch
 		}

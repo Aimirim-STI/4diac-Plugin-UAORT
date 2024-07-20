@@ -2,14 +2,14 @@
 <?pde version="3.8"?>
 <target name="Aimirim UAO Plugin Target">
   <locations>
-		<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-		  <repository location="https://download.eclipse.org/4diac/updates/rc/"/>
-		  <unit id="org.eclipse.equinox.p2.core.feature.feature.group" version="1.7.200.v20240515-1919"/>
-		  <unit id="org.eclipse.fordiac.ide.deployment.feature.feature.group" version="3.0.0.202407040748"/>
-	  </location>
     <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-      <repository location="https://download.eclipse.org/releases/2024-03"/>
-      <unit id="org.eclipse.emf.sdk.feature.group" version="2.37.0.v20240203-1010"/>
+      <repository location="https://download.eclipse.org/releases/2021-06/"/>
+      <unit id="org.eclipse.emf.sdk.feature.group" version="2.26.0.v20210506-1425"/>
+    </location>
+    <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+      <repository location="https://download.eclipse.org/4diac/updates/latest/"/>
+      <unit id="org.eclipse.equinox.p2.core.feature.feature.group" version="1.6.1000.v20210507-0825"/>
+      <unit id="org.eclipse.fordiac.ide.deployment.feature.feature.group" version="2.0.1.202310230926"/>
     </location>
     <location includeDependencyDepth="infinite" includeDependencyScopes="compile" includeSource="true" missingManifest="generate" type="Maven">
       <feature id="com.asti.fordiac.deployment.websocket" label="Websocket Dependencies" provider-name="Aimirim" version="1.0.0.qualifier">
