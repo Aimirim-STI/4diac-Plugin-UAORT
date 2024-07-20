@@ -622,7 +622,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final LocalDateTime now = LocalDateTime.now();
 		final String version = System.getProperty("org.eclipse.fordiac.ide.version"); //$NON-NLS-1$
 
-		final String projName = dev.getTypeEntry().getTypeLibrary().getSystems().keySet().toArray()[0].toString();
+		final String projName = "4diac Project"; //$NON-NLS-1$
 
 		final Element sysEl = doc.createElement("System"); //$NON-NLS-1$
 
