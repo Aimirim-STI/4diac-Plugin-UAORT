@@ -227,6 +227,21 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
+    public void resetResource(final String resName) {
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+	}
+
+	@Override
+    public void killResource(final String resName) {
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+	}
+    
+    @Override
+    public void stopResource(final Resource res) {
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+	}
+
+	@Override
 	public void createFBInstance(final FBDeploymentData fbData, final Resource res) throws DeploymentException {
 		client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
