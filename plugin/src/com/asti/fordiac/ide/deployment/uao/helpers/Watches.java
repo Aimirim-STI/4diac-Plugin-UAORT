@@ -234,8 +234,11 @@ public class Watches {
 		case STRING:
 			final short str_size = buffer.getShort(pos.getP());
 			pos.incP(TypeSize.INT.getSz());
-			final byte[] str_bytes = Arrays.copyOfRange(buffer.array(), pos.getP(), str_size);
+			final byte[] str_bytes = Arrays.copyOfRange(buffer.array(), pos.getP(), pos.getP()+str_size);
 			value = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(str_bytes)).toString();
+            pos.incP(str_size);
+            // Adding surrounding single quotes to string watch:
+            value = "'"+value+"'"; //$NON-NLS-1$ //$NON-NLS-2$
 			break;
 		default:
 			// Non implemented
