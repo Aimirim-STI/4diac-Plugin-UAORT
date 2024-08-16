@@ -5,7 +5,7 @@
 		<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
 		  <repository location="https://download.eclipse.org/4diac/updates/rc/"/>
 		  <unit id="org.eclipse.equinox.p2.core.feature.feature.group" version="1.7.200.v20240515-1919"/>
-		  <unit id="org.eclipse.fordiac.ide.deployment.feature.feature.group" version="3.0.0.202407191051"/>
+		  <unit id="org.eclipse.fordiac.ide.deployment.feature.feature.group" version="3.0.0.202408081534"/>
 	  </location>
     <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
       <repository location="https://download.eclipse.org/releases/2024-03"/>
