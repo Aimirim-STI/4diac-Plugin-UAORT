@@ -47,10 +47,6 @@ import org.eclipse.fordiac.ide.deployment.devResponse.Response;
 import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
 import org.eclipse.fordiac.ide.deployment.iec61499.ResponseMapping;
 import org.eclipse.fordiac.ide.deployment.interactors.IDeviceManagementInteractor;
-import org.eclipse.fordiac.ide.deployment.monitoringbase.MonitoringBaseElement;
-import com.asti.fordiac.ide.deployment.uao.helpers.Constants;
-import com.asti.fordiac.ide.deployment.uao.helpers.UAOClient;
-import com.asti.fordiac.ide.deployment.uao.helpers.WatchItem;
 import org.eclipse.fordiac.ide.deployment.util.DeploymentHelper;
 import org.eclipse.fordiac.ide.deployment.util.IDeploymentListener;
 import org.eclipse.fordiac.ide.model.libraryElement.Device;
@@ -65,6 +61,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import com.asti.fordiac.ide.deployment.uao.helpers.Constants;
+import com.asti.fordiac.ide.deployment.uao.helpers.UAOClient;
+import com.asti.fordiac.ide.deployment.uao.helpers.WatchItem;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -227,18 +226,18 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
-    public void resetResource(final String resName) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+	public void resetResource(final String resName) {
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | resetResource "+resName); //$NON-NLS-1$
 	}
 
 	@Override
-    public void killResource(final String resName) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+	public void killResource(final String resName) {
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | killResource "+resName); //$NON-NLS-1$
 	}
-    
-    @Override
-    public void stopResource(final Resource res) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+
+	@Override
+	public void stopResource(final Resource res) {
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | stopResource "+res.getName()); //$NON-NLS-1$
 	}
 
 	@Override
@@ -261,6 +260,11 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		if (fbFound != null) {
 			fbFound.appendChild(createParameter(varDecl.getName(), value));
 		}
+	}
+    
+    @Override
+	public void writeFBParameter(final Resource resource, final String destination, final String value) throws DeploymentException {
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
 	}
 
 	@Override
@@ -308,7 +312,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		fbNetwork.appendChild(eventConnection);
 		fbNetwork.appendChild(dataConnection);
 		// Start deploy
-        client.connectionCheck();
+		client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.deploy(deployXml, projectGuid, snapshotGuid);
 		final String to = client.getDeviceState();
@@ -317,7 +321,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-        // Appears not to be needed.
+		// Appears not to be needed.
 	}
 
 	@Override
@@ -404,19 +408,20 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
-	public void addWatch(final MonitoringBaseElement element) throws DeploymentException {
+	// public void addWatch(final MonitoringBaseElement element) throws
+	// DeploymentException {
+	public boolean addWatch(final Resource resource, final String name) throws DeploymentException {
 		client.connectionCheck();
-		String portPath = element.getQualifiedString();
-		final String uaoPortPath[] = portPath.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
 		final String uaoFbName = prefixUAO(fbName);
-		portPath = uaoFbName + "." + portName; //$NON-NLS-1$
-		final String resName = element.getResourceString();
-		final String dataType = element.getPort().getInterfaceElement().getType().getName();
+		final String portPath = uaoFbName + "." + portName; //$NON-NLS-1$
+		final String resName = resource.getName();
+		final String dataType = "Value"; //$NON-NLS-1$
 
 		final boolean check = client.addWatch(resName, portPath, watchid);
-		element.setOffline(!check);
+
 		if (check) {
 			final WatchItem wele = new WatchItem(watchid, fbName, portName, dataType);
 			if (!watch_items.containsKey(resName)) {
@@ -426,23 +431,24 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			watchid += 1;
 			FordiacLogHelper.logInfo("UAODeploymentExecutor | addWatch " + portPath + " Added"); //$NON-NLS-1$ //$NON-NLS-2$
 		}
+		return (check);
 	}
 
 	@Override
-	public void removeWatch(final MonitoringBaseElement element) throws DeploymentException {
+	public boolean removeWatch(final Resource resource, final String name) throws DeploymentException {
 		client.connectionCheck();
-		final String resName = element.getResourceString();
-		String portPath = element.getQualifiedString();
-		final String uaoPortPath[] = portPath.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String resName = resource.getName();
+		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = prefixUAO(uaoPortPath[0]);
 		final String portName = uaoPortPath[1];
-		portPath = fbName + "." + portName; //$NON-NLS-1$
+		final String portPath = fbName + "." + portName; //$NON-NLS-1$
 		int id = -1;
+		boolean check = false;
 		for (final WatchItem item : watch_items.get(resName)) {
 			if (item.portName.equals(portName)) {
 				id = item.id;
 				try {
-					final boolean check = client.removeWatch(resName, id);
+					check = client.removeWatch(resName, id);
 					if (check) {
 						watch_items.get(resName).remove(item);
 						FordiacLogHelper.logInfo("UAODeploymentExecutor | removeWatch " + portPath + " Removed"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -453,18 +459,18 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 				break;
 			}
 		}
+		return (check);
 	}
 
 	@Override
-	public void triggerEvent(final MonitoringBaseElement element) throws DeploymentException {
+	public void triggerEvent(final Resource resource, final String name) throws DeploymentException {
 		client.connectionCheck();
-		String portPath = element.getQualifiedString();
-		final String uaoPortPath[] = portPath.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
 		final String uaoFbName = prefixUAO(fbName);
-		portPath = uaoFbName + "." + portName; //$NON-NLS-1$
-		final String resName = element.getResourceString();
+		final String portPath = uaoFbName + "." + portName; //$NON-NLS-1$
+		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
 			if (item.portName.equals(portName)) {
@@ -476,15 +482,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
-	public void forceValue(final MonitoringBaseElement element, final String value) throws DeploymentException {
+	public void forceValue(final Resource resource, final String name, final String value) throws DeploymentException {
 		client.connectionCheck();
-		String portPath = element.getQualifiedString();
-		final String uaoPortPath[] = portPath.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
 		final String uaoFbName = prefixUAO(fbName);
-		portPath = uaoFbName + "." + portName; //$NON-NLS-1$
-		final String resName = element.getResourceString();
+		final String portPath = uaoFbName + "." + portName; //$NON-NLS-1$
+		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
 			if (item.portName.equals(portName)) {
@@ -499,15 +504,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
-	public void clearForce(final MonitoringBaseElement element) throws DeploymentException {
+	public void clearForce(final Resource resource, final String name) throws DeploymentException {
 		client.connectionCheck();
-		String portPath = element.getQualifiedString();
-		final String uaoPortPath[] = portPath.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
 		final String uaoFbName = prefixUAO(fbName);
-		portPath = uaoFbName + "." + portName; //$NON-NLS-1$
-		final String resName = element.getResourceString();
+		final String portPath = uaoFbName + "." + portName; //$NON-NLS-1$
+		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
 			if (item.portName.equals(portName)) {
