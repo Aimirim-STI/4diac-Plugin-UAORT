@@ -704,7 +704,10 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	private Element createParameter(final String Name, final String Value) {
 		final Element param = deployXml.createElement("Parameter"); //$NON-NLS-1$
 		param.setAttribute("Name", Name); //$NON-NLS-1$
-		param.setAttribute("Value", Value); //$NON-NLS-1$
+		// Remove possible surrounding quotes on string
+		String stringValue = Value.replaceAll("^\"|\"$", "");
+		stringValue = stringValue.replaceAll("^'|'$", "");
+		param.setAttribute("Value", stringValue); //$NON-NLS-1$
 		return (param);
 	}
 
