@@ -286,6 +286,21 @@ public class UAOClient {
 		}
 	}
 
+	/** Send a reboot command */
+	public synchronized void reboot() throws DeploymentException {
+		final byte[] iv = change_role("deploy"); //$NON-NLS-1$
+		if (iv != null) {
+			final JsonObject payload = getMessageBody("restart"); //$NON-NLS-1$
+			payload.addProperty("reboot", Boolean.TRUE); //$NON-NLS-1$
+			final JsonObject response = sendAndWaitResponse(payload);
+			if (!checkResponse(response)) {
+				// Rebooted Device won't answer if succeeded.
+				cmd_relrole();
+			}
+			parseError(response);
+		}
+	}
+
 	/** Generate a private-public key pair. */
 	public synchronized void regenKeyPair() {
 		final ECKeyGenerationParameters keyParams = new ECKeyGenerationParameters(curveParams, rand);
@@ -303,9 +318,10 @@ public class UAOClient {
 	 * @param doc    XML Document.
 	 * @param projId Project UUID.
 	 * @param snapId Snapshot UIID.
+	 * @param autoStart Flag that enables start command after deploy.
 	 * @throws DeploymentException Operation failed.
 	 */
-	public synchronized void deploy(final Document doc, final String projId, final String snapId)
+	public synchronized void deploy(final Document doc, final String projId, final String snapId, final boolean autoStart)
 			throws DeploymentException {
 		final Map<String, byte[]> deployList = new TreeMap<>();
 
@@ -349,8 +365,23 @@ public class UAOClient {
 
 		if (uploadOk) {
 			cmd_deploy(projId, snapId);
-			flow_command("start"); //$NON-NLS-1$
+			if (autoStart) {
+				flow_command("start"); //$NON-NLS-1$
+			}
 		}
+	}
+
+	/**
+	 * Perform a deploy operation defauting the autoStart flag to false 
+	 *
+	 * @param doc    XML Document.
+	 * @param projId Project UUID.
+	 * @param snapId Snapshot UIID.
+	 * @throws DeploymentException Operation failed.
+	 */
+	public synchronized void deploy(final Document doc, final String projId, final String snapId)
+			throws DeploymentException {
+		deploy(doc, projId, snapId, false);
 	}
 
 	/**
