@@ -44,6 +44,7 @@ import org.eclipse.emf.ecore.xmi.impl.XMLResourceImpl;
 import org.eclipse.fordiac.ide.deployment.Activator;
 import org.eclipse.fordiac.ide.deployment.data.ConnectionDeploymentData;
 import org.eclipse.fordiac.ide.deployment.data.FBDeploymentData;
+import org.eclipse.fordiac.ide.deployment.devResponse.DevResponseFactory;
 import org.eclipse.fordiac.ide.deployment.devResponse.Response;
 import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
 import org.eclipse.fordiac.ide.deployment.iec61499.ResponseMapping;
@@ -284,27 +285,31 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startResource(final Resource resource) throws DeploymentException {
-		// XXX: UAO Runtime does not have an implicit START block. It needs to be
-		// deployed.
-		// To fix this a new resource that does not already have a START FB is needed.
-		final FB fb = resource.getFBNetwork().getFBNamed("START"); //$NON-NLS-1$
-		if (fb != null) {
-			fbNetwork.appendChild(createFB(fb.getName(), fb.getTypeName()));
-		}
-		// Append the connections after all FBs were inserted in FBNetwork
-		fbNetwork.appendChild(eventConnection);
-		fbNetwork.appendChild(dataConnection);
-		// Start deploy
 		client.connectionCheck();
 		final String from = client.getDeviceState();
-		client.deploy(deployXml, projectGuid, snapshotGuid);
-		final String to = client.getDeviceState();
-		Activator.getDefault().logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		if (fbNetwork != null) {
+			// XXX: UAO Runtime does not have an implicit START block. It needs to be
+			// deployed.
+			// To fix this a new resource that does not already have a START FB is needed.
+			final FB fb = resource.getFBNetwork().getFBNamed("START"); //$NON-NLS-1$
+			if (fb != null) {
+			    fbNetwork.appendChild(createFB(fb.getName(), fb.getTypeName()));
+			}
+			// Append the connections after all FBs were inserted in FBNetwork
+			fbNetwork.appendChild(eventConnection);
+			fbNetwork.appendChild(dataConnection);
+			// Start deploy
+			client.deploy(deployXml, projectGuid, snapshotGuid);
+			final String to = client.getDeviceState();
+			Activator.getDefault().logInfo("UAODeploymentExecutor | Resource \""+resource.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
 	}
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-		// Appears not to be needed.
+		client.connectionCheck();
+		client.flow_command("start"); //$NON-NLS-1$
+		// Activator.getDefault().logWarning("UAODeploymentExecutor | startDevice"); //$NON-NLS-1$
 	}
 
 	@Override
@@ -313,7 +318,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		Activator.getDefault().logInfo("UAODeploymentExecutor | Runtime state from \"" + from + "\" to \"" + to + "\""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		Activator.getDefault().logInfo("UAODeploymentExecutor | Resource \""+resName+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
@@ -333,15 +338,23 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void killDevice(final Device dev) throws DeploymentException {
 		client.connectionCheck();
-		client.restart();
+		client.reboot();
 	}
 
 	@Override
 	public List<org.eclipse.fordiac.ide.deployment.devResponse.Resource> queryResources() throws DeploymentException {
 		client.connectionCheck();
-		// NOTE: This function needs to query the FBs currently deployed on the running
-		// runtime
-		return Collections.emptyList();
+		List<String> reslist = client.registerAsWatcher();
+		if (reslist == null || reslist.isEmpty()) {
+			return Collections.emptyList();
+		}
+		return reslist.stream().map(resName -> {
+			final org.eclipse.fordiac.ide.deployment.devResponse.Resource res = DevResponseFactory.eINSTANCE
+					.createResource();
+			res.setName(resName);
+			res.setType(resName);
+			return res;
+		}).toList();
 	}
 
 	@Override
@@ -558,8 +571,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		try {
 			ssl = getUseSsl(dev);
 		} catch (final DeploymentException e) {
-			Activator.getDefault()
-					.logError(MessageFormat.format(Messages.UAODeploymentExecutor_GetSSLFailed, e.getMessage()), e);
+			Activator.getDefault().logError(MessageFormat.format(Messages.UAODeploymentExecutor_GetSSLFailed, e.getMessage()), e);
 		}
 
 		UAOClient newClient = null;
