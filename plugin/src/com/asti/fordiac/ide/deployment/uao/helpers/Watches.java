@@ -121,7 +121,7 @@ public class Watches {
 	 */
 	private static String decodeArrayType(final ByteBuffer buffer, final BufferPos pos) {
 		String value = ""; //$NON-NLS-1$
-
+		String sep = " , "; //$NON-NLS-1$
 		final short arr_size = buffer.getShort(pos.getP());
 		pos.incP(TypeSize.INT.getSz());
 
@@ -130,9 +130,11 @@ public class Watches {
 
 		value += "["; //$NON-NLS-1$
 		for (int i = 0; i < arr_size; i++) {
-			value += decodeDataType(buffer, pos, id) + " , "; //$NON-NLS-1$
+			value += decodeDataType(buffer, pos, id);
+			if (i<arr_size-1) {
+				value += sep;
+			}
 		}
-		value.replaceFirst("\s*,\s*$", ""); //$NON-NLS-1$ //$NON-NLS-2$
 		value += "]"; //$NON-NLS-1$
 
 		return (value);
@@ -235,10 +237,14 @@ public class Watches {
 			final short str_size = buffer.getShort(pos.getP());
 			pos.incP(TypeSize.INT.getSz());
 			final byte[] str_bytes = Arrays.copyOfRange(buffer.array(), pos.getP(), pos.getP()+str_size);
-			value = StandardCharsets.UTF_8.decode(ByteBuffer.wrap(str_bytes)).toString();
-            pos.incP(str_size);
-            // Adding surrounding single quotes to string watch:
-            value = "'"+value+"'"; //$NON-NLS-1$ //$NON-NLS-2$
+			pos.incP(str_size);
+			value = new String(str_bytes, StandardCharsets.UTF_8);
+			// Check for invalid Null (0x00) character and replace them with UTF-8 error character
+			if (value.contains(Character.toString('\0'))) {
+				value = value.replaceAll("[\\000]+", "\uFFFD"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			// Adding surrounding single quotes to string watch:
+			value = "'"+value+"'"; //$NON-NLS-1$ //$NON-NLS-2$
 			break;
 		default:
 			// Non implemented

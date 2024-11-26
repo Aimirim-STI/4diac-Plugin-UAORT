@@ -68,6 +68,7 @@ import org.eclipse.fordiac.ide.deployment.Activator;
 import org.w3c.dom.Document;
 
 import com.asti.fordiac.ide.deployment.uao.Messages;
+import com.asti.fordiac.ide.deployment.uao.helpers.WatchResponse;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -488,7 +489,7 @@ public class UAOClient {
 	 * @return A list of strings for the watch values formatted.
 	 * @throws DeploymentException
 	 */
-	public synchronized List<String> fetchWatches(final String res) throws DeploymentException {
+	public synchronized WatchResponse fetchWatches(final String res) throws DeploymentException {
 		final byte[] iv = change_role("watch"); //$NON-NLS-1$
 		final List<String> responseList = new ArrayList<>();
 		JsonObject response = null;
@@ -503,9 +504,11 @@ public class UAOClient {
 			}
 			// NOTE: Removing the role release here speed up the watch loop
 			// cmd_relrole();
-			parseError(response);
+			// HACK: Do not parse the error into an exception yet. This will allow
+			//		retry on status 400.
+			// parseError(response);
 		}
-		return (responseList);
+		return (new WatchResponse(responseList,response));
 	}
 
 	/**
@@ -606,7 +609,7 @@ public class UAOClient {
 	 * @throws DeploymentException
 	 */
 	@SuppressWarnings("null")
-	private static void parseError(final JsonObject response) throws DeploymentException {
+	public static void parseError(final JsonObject response) throws DeploymentException {
 		if (!checkResponse(response) & response != null) {
 			final int status = response.get("result").getAsInt(); //$NON-NLS-1$
 			final String reason = response.get("error").getAsJsonObject().get("desc").getAsString(); //$NON-NLS-1$ //$NON-NLS-2$
@@ -680,6 +683,7 @@ public class UAOClient {
 		if (response != null) {
 			final JsonElement resobj = response.get("result"); //$NON-NLS-1$
 			if (resobj != null) {
+				// TODO: Code 400 is not exactly an error as well.
 				isok = resobj.getAsInt() == 200;
 			}
 		}

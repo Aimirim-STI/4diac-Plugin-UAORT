@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-  <feature url="features/com.asti.fordiac.deployment_2.1.0.qualifier.jar" id="com.asti.fordiac.deployment" version="2.1.0.qualifier">
+  <feature url="features/com.asti.fordiac.deployment_2.1.1.qualifier.jar" id="com.asti.fordiac.deployment" version="2.1.1.qualifier">
     <category name="com.asti.fordiac.deployment"/>
   </feature>
   <category-def name="com.asti.fordiac.deployment" label="Aimirim 4diac Plugins">
