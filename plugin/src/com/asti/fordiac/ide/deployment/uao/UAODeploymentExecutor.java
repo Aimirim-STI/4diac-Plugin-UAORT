@@ -14,6 +14,7 @@
 package com.asti.fordiac.ide.deployment.uao;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.security.Security;
@@ -38,6 +39,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.xmi.XMLResource;
 import org.eclipse.emf.ecore.xmi.impl.XMLResourceImpl;
@@ -61,10 +63,12 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import com.asti.fordiac.ide.deployment.uao.helpers.Constants;
 import com.asti.fordiac.ide.deployment.uao.helpers.UAOClient;
 import com.asti.fordiac.ide.deployment.uao.helpers.WatchItem;
+import com.asti.fordiac.ide.deployment.uao.helpers.WatchResponse;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -90,7 +94,9 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	private String projectGuid;
 	private int watchid = 0;
 	private long fetchCount = 0;
+	private long fetchErrorCount = 0;
 	private final int MAX_AUTH_RETRY = 10;
+	private final int MAX_FETCH_RETRY = 10;
 
 	private ConnectionStatus connectionStatus;
 	private final Device device;
@@ -247,17 +253,30 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void createFBInstance(final FBDeploymentData fbData, final Resource res) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
+		Document fbt = null;
+		try {
+			fbt = xmlRead(fb.getTypeEntry().getFile().getContents());
+		} catch (final CoreException e) {
+			e.printStackTrace();
+		}
+		String ns = "IEC61499.Standard"; //$NON-NLS-1$
+		if (fbt != null) {
+			final String nsfile = fbt.getDocumentElement().getAttribute("Namespace"); //$NON-NLS-1$
+			if ((nsfile != null) && !nsfile.isEmpty()) {
+				ns = nsfile;
+			}
+		}
 		if (fbNetwork != null) {
-			fbNetwork.appendChild(createFB(prefixUAO(fbData.getPrefix()) + fb.getName(), fb.getTypeName()));
+			fbNetwork.appendChild(createFB(prefixUAO(fbData.getPrefix()) + fb.getName(), fb.getTypeName(), ns));
 		}
 	}
 
 	@Override
 	public void writeFBParameter(final Resource resource, final String value, final FBDeploymentData fbData,
 			final VarDeclaration varDecl) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
 
 		final String fbFullName = prefixUAO(fbData.getPrefix()) + fb.getName();
@@ -266,8 +285,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			fbFound.appendChild(createParameter(varDecl.getName(), value));
 		}
 	}
-    
-    @Override
+
+	@Override
 	public void writeFBParameter(final Resource resource, final String destination, final String value) throws DeploymentException {
 		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
 	}
@@ -275,7 +294,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void createConnection(final Resource res, final ConnectionDeploymentData connData)
 			throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final IInterfaceElement sourceData = connData.getSource();
 		final IInterfaceElement destinationData = connData.getDestination();
 
@@ -306,7 +325,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startResource(final Resource resource) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		if (fbNetwork != null) {
 			// XXX: UAO Runtime does not have an implicit START block. It needs to be
@@ -314,7 +333,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			// To fix this a new resource that does not already have a START FB is needed.
 			final FB fb = resource.getFBNetwork().getFBNamed("START"); //$NON-NLS-1$
 			if (fb != null) {
-			    fbNetwork.appendChild(createFB(fb.getName(), fb.getTypeName()));
+				fbNetwork.appendChild(createFB(fb.getName(), fb.getTypeName()));
 			}
 			// Append the connections after all FBs were inserted in FBNetwork
 			fbNetwork.appendChild(eventConnection);
@@ -328,14 +347,16 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
+		final String from = client.getDeviceState();
 		client.flow_command("start"); //$NON-NLS-1$
-		// FordiacLogHelper.logWarning("UAODeploymentExecutor | startDevice"); //$NON-NLS-1$
+		final String to = client.getDeviceState();
+		FordiacLogHelper.logInfo("UAODeploymentExecutor | Device \""+dev.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
 	public void deleteResource(final String resName) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
@@ -358,13 +379,13 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void killDevice(final Device dev) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		client.reboot();
 	}
 
 	@Override
 	public List<org.eclipse.fordiac.ide.deployment.devResponse.Resource> queryResources() throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		List<String> reslist = client.registerAsWatcher();
 		if (reslist == null || reslist.isEmpty()) {
 			return Collections.emptyList();
@@ -381,25 +402,35 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public Response readWatches() throws DeploymentException {
 		fetchCount += 1;
-		client.connectionCheck();
-		List<String> responses;
-		JsonArray forceResponse;
+		// client.connectionCheck();
+		WatchResponse resp = null;
+		JsonArray forceResponse = new JsonArray();
 		if (!watch_items.isEmpty()) {
 			for (final Resource res : device.getResource()) {
 				if (!watch_items.get(res.getName()).isEmpty()) {
 					try {
-						responses = client.fetchWatches(res.getName());
+						resp = client.fetchWatches(res.getName());
+						if (resp.getResponse().get("result").getAsInt()==400) { //$NON-NLS-1$
+							FordiacLogHelper.logInfo("UAODeploymentExecutor | readWatches | Runtime is busy."); //$NON-NLS-1$
+						} else {
+							UAOClient.parseError(resp.getResponse());
+						}
 						forceResponse = client.forceQuery(res.getName());
+						fetchErrorCount=0; // Reset errors
 					} catch (final DeploymentException e) {
-						e.printStackTrace();
-						FordiacLogHelper.logError(e.getMessage());
-						// Thread.currentThread().interrupt();
-						throw e;
+						fetchErrorCount+=1;
+						if (fetchErrorCount>MAX_FETCH_RETRY){
+							FordiacLogHelper.logError(e.getMessage());
+							throw e;
+						}
+						FordiacLogHelper.logWarning(e.getMessage()+" Retry attempt "+fetchErrorCount+" of "+MAX_FETCH_RETRY+"."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					}
 					int wlid = 0;
-					for (final String value : responses) {
-						watch_items.get(res.getName()).get(wlid).setValue(value);
-						wlid += 1;
+					if (resp!=null) {
+						for (final String value : resp.getWatches()) {
+							watch_items.get(res.getName()).get(wlid).setValue(value);
+							wlid += 1;
+						}
 					}
 					for (final JsonElement forceVariable : forceResponse) {
 						final JsonObject force = forceVariable.getAsJsonObject();
@@ -415,20 +446,20 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 				}
 			}
 		}
-		Response watchResponse = Constants.EMPTY_RESPONSE;
+		Response watches = Constants.EMPTY_RESPONSE;
 		try {
-			watchResponse = parseWatchResponse(watch_items, fetchCount);
+			if (resp!=null) {
+				watches = parseWatchResponse(watch_items, fetchCount);
+			}
 		} catch (final IOException | TransformerException e) {
 			e.printStackTrace();
 		}
-		return (watchResponse);
+		return (watches);
 	}
 
 	@Override
-	// public void addWatch(final MonitoringBaseElement element) throws
-	// DeploymentException {
 	public boolean addWatch(final Resource resource, final String name) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -453,7 +484,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public boolean removeWatch(final Resource resource, final String name) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String resName = resource.getName();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = prefixUAO(uaoPortPath[0]);
@@ -481,7 +512,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void triggerEvent(final Resource resource, final String name) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -490,7 +521,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
-			if (item.portName.equals(portName)) {
+			final String itemPortPath = prefixUAO(item.fbName) + "." + item.portName; //$NON-NLS-1$
+			if (itemPortPath.equals(portPath)) {
 				client.triggerEvent(resName, portPath);
 				break;
 			}
@@ -500,7 +532,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void forceValue(final Resource resource, final String name, final String value) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -509,7 +541,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
-			if (item.portName.equals(portName)) {
+			final String itemPortPath = prefixUAO(item.fbName) + "." + item.portName; //$NON-NLS-1$
+			if (itemPortPath.equals(portPath)) {
 				final boolean check = client.forceValue(true, resName, portPath, value);
 				if (check) {
 					item.setForce(true);
@@ -522,7 +555,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void clearForce(final Resource resource, final String name) throws DeploymentException {
-		client.connectionCheck();
+		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -531,7 +564,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String resName = resource.getName();
 
 		for (final WatchItem item : watch_items.get(resName)) {
-			if (item.portName.equals(portName)) {
+			final String itemPortPath = prefixUAO(item.fbName) + "." + item.portName; //$NON-NLS-1$
+			if (itemPortPath.equals(portPath)) {
 				final boolean check = client.forceValue(false, resName, portPath, null);
 				if (check) {
 					item.setForce(false);
@@ -722,8 +756,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final Element param = deployXml.createElement("Parameter"); //$NON-NLS-1$
 		param.setAttribute("Name", Name); //$NON-NLS-1$
 		// Remove possible surrounding quotes on string
-		String stringValue = Value.replaceAll("^\"|\"$", "");
-		stringValue = stringValue.replaceAll("^'|'$", "");
+		String stringValue = Value.replaceAll("^\"|\"$", ""); //$NON-NLS-1$//$NON-NLS-2$
+		stringValue = stringValue.replaceAll("^'|'$", ""); //$NON-NLS-1$//$NON-NLS-2$
 		param.setAttribute("Value", stringValue); //$NON-NLS-1$
 		return (param);
 	}
@@ -861,6 +895,32 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final StringWriter writer = new StringWriter();
 		transformer.transform(new DOMSource(doc), new StreamResult(writer));
 		return (writer.toString());
+	}
+
+	/**
+	 * Read a xml file into a Document.
+	 *
+	 * @param stream The file object.
+	 * @return readed document or null if fail.
+	 */
+	private static Document xmlRead(final InputStream stream) {
+		final DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder docBuilder = null;
+		Document doc = null;
+		try {
+			docFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false); //$NON-NLS-1$
+			docBuilder = docFactory.newDocumentBuilder();
+		} catch (final ParserConfigurationException e) {
+			e.printStackTrace();
+		}
+		try {
+			if (docBuilder != null) {
+				doc = docBuilder.parse(stream);
+			}
+		} catch (SAXException | IOException e) {
+			e.printStackTrace();
+		}
+		return (doc);
 	}
 
 }
