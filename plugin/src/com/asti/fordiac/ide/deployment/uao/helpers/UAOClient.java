@@ -40,6 +40,7 @@ import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.SSLContext;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.http.HttpResponse;
@@ -64,11 +65,10 @@ import org.bouncycastle.crypto.params.ECPublicKeyParameters;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
 import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
-import com.asti.fordiac.ide.deployment.uao.Messages;
-import com.asti.fordiac.ide.deployment.uao.helpers.WatchResponse;
 import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.w3c.dom.Document;
 
+import com.asti.fordiac.ide.deployment.uao.Messages;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -108,9 +108,13 @@ public class UAOClient {
 	 */
 	public UAOClient(final String uri, final int timeoutms, final boolean useSsl) throws DeploymentException {
 		this.endpoint = uri;
-		final String wsEndpoint = String.format("ws://%s", endpoint); //$NON-NLS-1$
+		String protocol = "ws:";
+		if (useSsl) {
+			protocol = "wss:";
+		}
+		final String wsEndpoint = String.format("%s//%s", protocol, endpoint); //$NON-NLS-1$
 
-		this.ws = setWebsocket(wsEndpoint, timeoutms);
+		this.ws = setWebsocket(wsEndpoint, timeoutms, useSsl);
 		setEllipticCurve();
 		regenKeyPair();
 	}
@@ -316,14 +320,14 @@ public class UAOClient {
 	/**
 	 * Perform a deploy operation.
 	 *
-	 * @param doc    XML Document.
-	 * @param projId Project UUID.
-	 * @param snapId Snapshot UIID.
+	 * @param doc       XML Document.
+	 * @param projId    Project UUID.
+	 * @param snapId    Snapshot UIID.
 	 * @param autoStart Flag that enables start command after deploy.
 	 * @throws DeploymentException Operation failed.
 	 */
-	public synchronized void deploy(final Document doc, final String projId, final String snapId, final boolean autoStart)
-			throws DeploymentException {
+	public synchronized void deploy(final Document doc, final String projId, final String snapId,
+			final boolean autoStart) throws DeploymentException {
 		final Map<String, byte[]> deployList = new TreeMap<>();
 
 		MessageDigest flistHash = null;
@@ -373,7 +377,7 @@ public class UAOClient {
 	}
 
 	/**
-	 * Perform a deploy operation defauting the autoStart flag to false 
+	 * Perform a deploy operation defauting the autoStart flag to false
 	 *
 	 * @param doc    XML Document.
 	 * @param projId Project UUID.
@@ -505,10 +509,10 @@ public class UAOClient {
 			// NOTE: Removing the role release here speed up the watch loop
 			// cmd_relrole();
 			// HACK: Do not parse the error into an exception yet. This will allow
-			//		retry on status 400.
+			// retry on status 400.
 			// parseError(response);
 		}
-		return (new WatchResponse(responseList,response));
+		return (new WatchResponse(responseList, response));
 	}
 
 	/**
@@ -625,15 +629,22 @@ public class UAOClient {
 	 * @param timeoutms Connection timeout.
 	 * @throws DeploymentException Failed to instantiate websocket client.
 	 */
-	private WebSocket setWebsocket(final String endpoint, final int timeoutms) throws DeploymentException {
+	private WebSocket setWebsocket(final String endpoint, final int timeoutms, final boolean ssl)
+			throws DeploymentException {
 		WebSocket websock = null;
 		try {
 			final WebSocketFactory wsFactory = new WebSocketFactory();
 			if (timeoutms > 0) {
 				wsFactory.setConnectionTimeout(timeoutms);
 			}
+			if (ssl) {
+				FordiacLogHelper.logInfo("UAOClient | setWebsocket | Configuring SSL"); //$NON-NLS-1$
+				final SSLContext context = SimpleSSLContext.getInstance("TLS"); //$NON-NLS-1$
+				wsFactory.setSSLContext(context);
+				wsFactory.setVerifyHostname(false);
+			}
 			websock = wsFactory.createSocket(endpoint);
-		} catch (final IOException e) {
+		} catch (final IOException | NoSuchAlgorithmException e) {
 			throw new DeploymentException(
 					MessageFormat.format(Messages.UAODeploymentExecutor_CreateClientFailed, e.getMessage()));
 		}
