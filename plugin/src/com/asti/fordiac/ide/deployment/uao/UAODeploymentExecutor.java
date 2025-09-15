@@ -256,7 +256,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void createFBInstance(final FBDeploymentData fbData, final Resource res) throws DeploymentException {
-		// client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
 		Document fbt = null;
 		try {
@@ -279,7 +278,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void writeFBParameter(final Resource resource, final String value, final FBDeploymentData fbData,
 			final VarDeclaration varDecl) throws DeploymentException {
-		// client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
 
 		final String fbFullName = prefixUAO(fbData.getPrefix()) + fb.getName();
@@ -299,7 +297,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void createConnection(final Resource res, final ConnectionDeploymentData connData)
 			throws DeploymentException {
-		// client.connectionCheck();
 		final IInterfaceElement sourceData = connData.getSource();
 		final IInterfaceElement destinationData = connData.getDestination();
 
@@ -330,7 +327,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startResource(final Resource resource) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		if (fbNetwork != null) {
 			// XXX: UAO Runtime does not have an implicit START block. It needs to be
@@ -353,7 +349,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.flow_command("start"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
@@ -363,7 +358,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void deleteResource(final String resName) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
@@ -387,7 +381,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void killDevice(final Device dev) throws DeploymentException {
-		// client.connectionCheck();
 		client.reboot();
 	}
 
@@ -410,7 +403,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public Response readWatches() throws DeploymentException {
 		fetchCount += 1;
-		// client.connectionCheck();
 		WatchResponse resp = null;
 		JsonArray forceResponse = new JsonArray();
 		if (!watch_items.isEmpty()) {
@@ -468,7 +460,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public boolean addWatch(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -493,7 +484,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public boolean removeWatch(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String resName = resource.getName();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = prefixUAO(uaoPortPath[0]);
@@ -521,7 +511,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void triggerEvent(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -541,7 +530,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void forceValue(final Resource resource, final String name, final String value) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -564,7 +552,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void clearForce(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
