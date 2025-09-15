@@ -45,16 +45,20 @@ import javax.net.ssl.SSLContext;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.BasicCookieStore;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.agreement.ECDHBasicAgreement;
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
@@ -83,6 +87,7 @@ public class UAOClient {
 
 	private final WebSocket ws;
 	private final String endpoint;
+	private final boolean withSsl;
 	private final SecureRandom rand = new SecureRandom();
 	private ECPrivateKeyParameters privKey;
 	private ECPublicKeyParameters pubKey;
@@ -108,13 +113,13 @@ public class UAOClient {
 	 */
 	public UAOClient(final String uri, final int timeoutms, final boolean useSsl) throws DeploymentException {
 		this.endpoint = uri;
-		String protocol = "ws:";
+		String protocol = "ws:"; //$NON-NLS-1$
 		if (useSsl) {
-			protocol = "wss:";
+			protocol = "wss:"; //$NON-NLS-1$
 		}
 		final String wsEndpoint = String.format("%s//%s", protocol, endpoint); //$NON-NLS-1$
-
-		this.ws = setWebsocket(wsEndpoint, timeoutms, useSsl);
+		this.withSsl = useSsl;
+		this.ws = setWebsocket(wsEndpoint, timeoutms);
 		setEllipticCurve();
 		regenKeyPair();
 	}
@@ -621,15 +626,14 @@ public class UAOClient {
 	 * @param timeoutms Connection timeout.
 	 * @throws DeploymentException Failed to instantiate websocket client.
 	 */
-	private WebSocket setWebsocket(final String endpoint, final int timeoutms, final boolean ssl)
-			throws DeploymentException {
+	private WebSocket setWebsocket(final String endpoint, final int timeoutms) throws DeploymentException {
 		WebSocket websock = null;
 		try {
 			final WebSocketFactory wsFactory = new WebSocketFactory();
 			if (timeoutms > 0) {
 				wsFactory.setConnectionTimeout(timeoutms);
 			}
-			if (ssl) {
+			if (withSsl) {
 				FordiacLogHelper.logInfo("UAOClient | setWebsocket | Configuring SSL"); //$NON-NLS-1$
 				final SSLContext context = SimpleSSLContext.getInstance("TLS"); //$NON-NLS-1$
 				wsFactory.setSSLContext(context);
@@ -1058,6 +1062,30 @@ public class UAOClient {
 	}
 
 	/**
+	 * Create the HTTP client connection correctly
+	 *
+	 * @param ssl Enable SSL on http
+	 * @return
+	 * @throws DeploymentException
+	 */
+	private static HttpClient createSimpleHttpClient(final boolean ssl) throws DeploymentException {
+		if (!ssl) {
+			return HttpClients.createDefault();
+		}
+		SSLContext sslContext = null;
+		try {
+			sslContext = new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build();
+		} catch (final Exception e) {
+			throw new DeploymentException(
+					MessageFormat.format(Messages.UAODeploymentExecutor_RequestInterrupted, e.getMessage()));
+		}
+		final SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext,
+				NoopHostnameVerifier.INSTANCE);
+		return HttpClientBuilder.create().setSSLSocketFactory(sslSocketFactory).build();
+
+	}
+
+	/**
 	 * Send a list of files to the Runtime.
 	 *
 	 * @param fileMap a Filename:Filebytes kind of map.
@@ -1067,9 +1095,13 @@ public class UAOClient {
 	 */
 	private synchronized List<HttpResponse> sendFiles(final Map<String, byte[]> fileMap, final String snpId)
 			throws DeploymentException, ClientProtocolException, IOException {
-		final String httpEndpoint = String.format("http://%s/upload/", endpoint); //$NON-NLS-1$
+		String protocol = "http:"; //$NON-NLS-1$
+		if (withSsl) {
+			protocol = "https:"; //$NON-NLS-1$
+		}
+		final String httpEndpoint = String.format("%s//%s/upload/", protocol, endpoint); //$NON-NLS-1$
 
-		final CloseableHttpClient httpClient = HttpClients.createDefault();
+		final HttpClient httpClient = createSimpleHttpClient(withSsl);
 		final BasicCookieStore cookieStore = new BasicCookieStore();
 		final BasicHttpContext httpContext = new BasicHttpContext();
 		httpContext.setAttribute(HttpClientContext.COOKIE_STORE, cookieStore);
