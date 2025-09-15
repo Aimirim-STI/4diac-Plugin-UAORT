@@ -100,6 +100,7 @@ public class UAOClient {
 	private int msgnr = 0;
 	private String current_role = ""; //$NON-NLS-1$
 	private byte[] current_role_iv = null;
+	private List<String> current_resList = new ArrayList<>();
 	private final int watch_gen = 42;
 	private final LinkedList<JsonObject> msgReceived = new LinkedList<>();
 
@@ -419,11 +420,23 @@ public class UAOClient {
 	 * @return List of available resources
 	 * @throws DeploymentException
 	 */
-	public synchronized List<String> registerAsWatcher() throws DeploymentException {
-		final byte[] iv = change_role("watch"); //$NON-NLS-1$
+	public synchronized List<String> getResourceList() throws DeploymentException {
+		if (!current_resList.isEmpty()) {
+			return (current_resList);
+		}
+		change_role("watch"); //$NON-NLS-1$
+		return (current_resList);
+	}
+
+	/**
+	 * Register this client as a watcher in the runtime.
+	 *
+	 * @return List of available resources
+	 * @throws DeploymentException
+	 */
+	public synchronized List<String> registerAsWatcher(final byte[] iv) throws DeploymentException {
 		JsonObject response = null;
 		final List<String> resList = new ArrayList<>();
-
 		if (iv != null) {
 			final JsonObject payload = getMessageBody("regwatch"); //$NON-NLS-1$
 			payload.addProperty("generation", Integer.valueOf(watch_gen)); //$NON-NLS-1$
@@ -432,6 +445,8 @@ public class UAOClient {
 			for (final JsonElement res : response.get("resources").getAsJsonArray()) { //$NON-NLS-1$
 				resList.add(res.getAsString());
 			}
+			current_resList.clear();
+			current_resList = resList;
 		}
 		return (resList);
 	}
@@ -1000,6 +1015,9 @@ public class UAOClient {
 				if (checkResponse(role_result)) {
 					current_role = role;
 					current_role_iv = ivbytes;
+					if (role.equals("watch")) { //$NON-NLS-1$
+						registerAsWatcher(ivbytes);
+					}
 					return (ivbytes);
 				}
 			}
@@ -1019,6 +1037,7 @@ public class UAOClient {
 		if (checkResponse(response)) {
 			current_role = ""; //$NON-NLS-1$
 			current_role_iv = null;
+			current_resList.clear();
 		}
 		return (response);
 	}

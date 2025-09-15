@@ -165,7 +165,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 					try {
 						success = client.authenticate();
 						if (success) {
-							client.registerAsWatcher();
 							break;
 						}
 					} catch (final DeploymentException e) {
@@ -386,8 +385,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public List<org.eclipse.fordiac.ide.deployment.devResponse.Resource> queryResources() throws DeploymentException {
-		// client.connectionCheck();
-		List<String> reslist = client.registerAsWatcher();
+		final List<String> reslist = client.getResourceList();
 		if (reslist == null || reslist.isEmpty()) {
 			return Collections.emptyList();
 		}
