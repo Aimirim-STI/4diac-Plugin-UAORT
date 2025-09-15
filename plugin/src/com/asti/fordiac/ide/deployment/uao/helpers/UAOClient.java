@@ -271,7 +271,6 @@ public class UAOClient {
 		final byte[] iv = change_role("deploy"); //$NON-NLS-1$
 		if (iv != null) {
 			final JsonObject response = cmd_transition(cmd);
-			cmd_relrole();
 			parseError(response);
 		}
 	}
@@ -404,7 +403,6 @@ public class UAOClient {
 			if (stateobj != null) {
 				state = stateobj.getAsString();
 			}
-			cmd_relrole();
 			parseError(response);
 		}
 		return (state);
@@ -425,8 +423,6 @@ public class UAOClient {
 			final JsonObject payload = getMessageBody("regwatch"); //$NON-NLS-1$
 			payload.addProperty("generation", Integer.valueOf(watch_gen)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-
-			cmd_relrole();
 			parseError(response);
 			for (final JsonElement res : response.get("resources").getAsJsonArray()) { //$NON-NLS-1$
 				resList.add(res.getAsString());
@@ -456,7 +452,6 @@ public class UAOClient {
 			payload.addProperty("path", entry_path); //$NON-NLS-1$
 			payload.addProperty("item_id", Integer.valueOf(id)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -480,7 +475,6 @@ public class UAOClient {
 			payload.addProperty("generation", Integer.valueOf(watch_gen)); //$NON-NLS-1$
 			payload.addProperty("item_id", Integer.valueOf(id)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -532,7 +526,6 @@ public class UAOClient {
 			payload.addProperty("resource", res); //$NON-NLS-1$
 			payload.addProperty("path", event_path); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -565,7 +558,6 @@ public class UAOClient {
 			payload.addProperty("resource", res); //$NON-NLS-1$
 			payload.add("variable", forceData); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -989,6 +981,9 @@ public class UAOClient {
 		if (role.equals(current_role)) {
 			return (current_role_iv);
 		}
+		if (!current_role.isEmpty()) {
+			cmd_relrole();
+		}
 		final JsonObject nonce_result = cmd_rqnonce(role);
 
 		if (checkResponse(nonce_result)) {
@@ -1056,7 +1051,6 @@ public class UAOClient {
 			payload.addProperty("snapshot_guid", snapId); //$NON-NLS-1$
 
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 
