@@ -224,12 +224,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void writeResourceParameter(final Resource resource, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeResourceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeResourceParameter
+		// "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
 	public void writeDeviceParameter(final Device device, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter
+		// "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
@@ -248,7 +250,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void stopResource(final Resource res) {
-		// FordiacLogHelper.logWarning("UAODeploymentExecutor | stopResource "+res.getName()); //$NON-NLS-1$
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | stopResource
+		// "+res.getName()); //$NON-NLS-1$
 	}
 
 	@Override
@@ -287,8 +290,10 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	}
 
 	@Override
-	public void writeFBParameter(final Resource resource, final String destination, final String value) throws DeploymentException {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
+	public void writeFBParameter(final Resource resource, final String destination, final String value)
+			throws DeploymentException {
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor |
+		// writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
 	}
 
 	@Override
@@ -341,7 +346,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			// Start deploy
 			client.deploy(deployXml, projectGuid, snapshotGuid);
 			final String to = client.getDeviceState();
-			FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \""+resource.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \"" + resource.getName() + "\" state from [" //$NON-NLS-1$ //$NON-NLS-2$
+					+ from + "] to [" + to + "]"); //$NON-NLS-1$
 		}
 	}
 
@@ -351,7 +357,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String from = client.getDeviceState();
 		client.flow_command("start"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Device \""+dev.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		FordiacLogHelper.logInfo(
+				"UAODeploymentExecutor | Device \"" + dev.getName() + "\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
@@ -360,7 +367,8 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \""+resName+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		FordiacLogHelper.logInfo(
+				"UAODeploymentExecutor | Resource \"" + resName + "\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
@@ -410,23 +418,24 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 				if (!watch_items.get(res.getName()).isEmpty()) {
 					try {
 						resp = client.fetchWatches(res.getName());
-						if (resp.getResponse().get("result").getAsInt()==400) { //$NON-NLS-1$
+						if (resp.getResponse().get("result").getAsInt() == 400) { //$NON-NLS-1$
 							FordiacLogHelper.logInfo("UAODeploymentExecutor | readWatches | Runtime is busy."); //$NON-NLS-1$
 						} else {
 							UAOClient.parseError(resp.getResponse());
 						}
 						forceResponse = client.forceQuery(res.getName());
-						fetchErrorCount=0; // Reset errors
+						fetchErrorCount = 0; // Reset errors
 					} catch (final DeploymentException e) {
-						fetchErrorCount+=1;
-						if (fetchErrorCount>MAX_FETCH_RETRY){
+						fetchErrorCount += 1;
+						if (fetchErrorCount > MAX_FETCH_RETRY) {
 							FordiacLogHelper.logError(e.getMessage());
 							throw e;
 						}
-						FordiacLogHelper.logWarning(e.getMessage()+" Retry attempt "+fetchErrorCount+" of "+MAX_FETCH_RETRY+"."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+						FordiacLogHelper.logWarning(
+								e.getMessage() + " Retry attempt " + fetchErrorCount + " of " + MAX_FETCH_RETRY + "."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					}
 					int wlid = 0;
-					if (resp!=null) {
+					if (resp != null) {
 						for (final String value : resp.getWatches()) {
 							watch_items.get(res.getName()).get(wlid).setValue(value);
 							wlid += 1;
@@ -448,7 +457,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		}
 		Response watches = Constants.EMPTY_RESPONSE;
 		try {
-			if (resp!=null) {
+			if (resp != null) {
 				watches = parseWatchResponse(watch_items, fetchCount);
 			}
 		} catch (final IOException | TransformerException e) {
