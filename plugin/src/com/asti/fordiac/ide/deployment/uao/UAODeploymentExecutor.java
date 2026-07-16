@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -58,6 +59,9 @@ import org.eclipse.fordiac.ide.model.libraryElement.FBNetworkElement;
 import org.eclipse.fordiac.ide.model.libraryElement.IInterfaceElement;
 import org.eclipse.fordiac.ide.model.libraryElement.Resource;
 import org.eclipse.fordiac.ide.model.libraryElement.VarDeclaration;
+import org.eclipse.fordiac.ide.model.typelibrary.DataTypeEntry;
+import org.eclipse.fordiac.ide.model.typelibrary.FBTypeEntry;
+import org.eclipse.fordiac.ide.model.typelibrary.GlobalConstantsEntry;
 import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -296,20 +300,20 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void createConnection(final Resource res, final ConnectionDeploymentData connData)
 			throws DeploymentException {
-		final IInterfaceElement sourceData = connData.getSource();
-		final IInterfaceElement destinationData = connData.getDestination();
+		final IInterfaceElement sourceData = connData.source();
+		final IInterfaceElement destinationData = connData.destination();
 
-		if (sourceData == null || sourceData.getFBNetworkElement() == null || destinationData == null
-				|| destinationData.getFBNetworkElement() == null) {
+		if (sourceData == null || sourceData.getBlockFBNetworkElement() == null || destinationData == null
+				|| destinationData.getBlockFBNetworkElement() == null) {
 			throw new DeploymentException(MessageFormat
 					.format(Messages.UAODeploymentExecutor_CreateConnectionFailedNoDataFound, res.getName()));
 		}
 
-		final FBNetworkElement sourceFB = sourceData.getFBNetworkElement();
-		final FBNetworkElement destinationFB = destinationData.getFBNetworkElement();
-		final String source = String.format("%s%s.%s", prefixUAO(connData.getSourcePrefix()), sourceFB.getName(), //$NON-NLS-1$
+		final FBNetworkElement sourceFB = sourceData.getBlockFBNetworkElement();
+		final FBNetworkElement destinationFB = destinationData.getBlockFBNetworkElement();
+		final String source = String.format("%s%s.%s", prefixUAO(connData.sourcePrefix()), sourceFB.getName(), //$NON-NLS-1$
 				sourceData.getName());
-		final String destination = String.format("%s%s.%s", prefixUAO(connData.getDestinationPrefix()), //$NON-NLS-1$
+		final String destination = String.format("%s%s.%s", prefixUAO(connData.destinationPrefix()), //$NON-NLS-1$
 				destinationFB.getName(), destinationData.getName());
 
 		if (sourceData.getTypeName() == "Event" && destinationData.getTypeName() == "Event") { //$NON-NLS-1$ //$NON-NLS-2$
@@ -915,6 +919,34 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			e.printStackTrace();
 		}
 		return (doc);
+	}
+
+	@Override
+	public Response queryFBType(final FBTypeEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public Response queryDataType(final DataTypeEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public Response queryGlobalConstType(final GlobalConstantsEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public void readTraces(final Device device, final String path) throws DeploymentException {
+		throw new UnsupportedOperationException(Messages.UAODeploymentExecutor_CommandNotImplemented);
+	}
+
+	@Override
+	public Optional<String> replayNextEvent(final Resource resource) throws DeploymentException {
+		throw new UnsupportedOperationException(Messages.UAODeploymentExecutor_CommandNotImplemented);
 	}
 
 }
