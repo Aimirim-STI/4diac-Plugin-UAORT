@@ -40,20 +40,25 @@ import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.SSLContext;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.BasicCookieStore;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.agreement.ECDHBasicAgreement;
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
@@ -64,11 +69,10 @@ import org.bouncycastle.crypto.params.ECPublicKeyParameters;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
 import org.eclipse.fordiac.ide.deployment.exceptions.DeploymentException;
-import com.asti.fordiac.ide.deployment.uao.Messages;
-import com.asti.fordiac.ide.deployment.uao.helpers.WatchResponse;
 import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.w3c.dom.Document;
 
+import com.asti.fordiac.ide.deployment.uao.Messages;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -83,6 +87,7 @@ public class UAOClient {
 
 	private final WebSocket ws;
 	private final String endpoint;
+	private final boolean withSsl;
 	private final SecureRandom rand = new SecureRandom();
 	private ECPrivateKeyParameters privKey;
 	private ECPublicKeyParameters pubKey;
@@ -95,6 +100,7 @@ public class UAOClient {
 	private int msgnr = 0;
 	private String current_role = ""; //$NON-NLS-1$
 	private byte[] current_role_iv = null;
+	private List<String> current_resList = new ArrayList<>();
 	private final int watch_gen = 42;
 	private final LinkedList<JsonObject> msgReceived = new LinkedList<>();
 
@@ -108,8 +114,12 @@ public class UAOClient {
 	 */
 	public UAOClient(final String uri, final int timeoutms, final boolean useSsl) throws DeploymentException {
 		this.endpoint = uri;
-		final String wsEndpoint = String.format("ws://%s", endpoint); //$NON-NLS-1$
-
+		String protocol = "ws:"; //$NON-NLS-1$
+		if (useSsl) {
+			protocol = "wss:"; //$NON-NLS-1$
+		}
+		final String wsEndpoint = String.format("%s//%s", protocol, endpoint); //$NON-NLS-1$
+		this.withSsl = useSsl;
 		this.ws = setWebsocket(wsEndpoint, timeoutms);
 		setEllipticCurve();
 		regenKeyPair();
@@ -267,7 +277,6 @@ public class UAOClient {
 		final byte[] iv = change_role("deploy"); //$NON-NLS-1$
 		if (iv != null) {
 			final JsonObject response = cmd_transition(cmd);
-			cmd_relrole();
 			parseError(response);
 		}
 	}
@@ -316,14 +325,14 @@ public class UAOClient {
 	/**
 	 * Perform a deploy operation.
 	 *
-	 * @param doc    XML Document.
-	 * @param projId Project UUID.
-	 * @param snapId Snapshot UIID.
+	 * @param doc       XML Document.
+	 * @param projId    Project UUID.
+	 * @param snapId    Snapshot UIID.
 	 * @param autoStart Flag that enables start command after deploy.
 	 * @throws DeploymentException Operation failed.
 	 */
-	public synchronized void deploy(final Document doc, final String projId, final String snapId, final boolean autoStart)
-			throws DeploymentException {
+	public synchronized void deploy(final Document doc, final String projId, final String snapId,
+			final boolean autoStart) throws DeploymentException {
 		final Map<String, byte[]> deployList = new TreeMap<>();
 
 		MessageDigest flistHash = null;
@@ -373,7 +382,7 @@ public class UAOClient {
 	}
 
 	/**
-	 * Perform a deploy operation defauting the autoStart flag to false 
+	 * Perform a deploy operation defauting the autoStart flag to false
 	 *
 	 * @param doc    XML Document.
 	 * @param projId Project UUID.
@@ -400,7 +409,6 @@ public class UAOClient {
 			if (stateobj != null) {
 				state = stateobj.getAsString();
 			}
-			cmd_relrole();
 			parseError(response);
 		}
 		return (state);
@@ -412,21 +420,33 @@ public class UAOClient {
 	 * @return List of available resources
 	 * @throws DeploymentException
 	 */
-	public synchronized List<String> registerAsWatcher() throws DeploymentException {
-		final byte[] iv = change_role("watch"); //$NON-NLS-1$
+	public synchronized List<String> getResourceList() throws DeploymentException {
+		if (!current_resList.isEmpty()) {
+			return (current_resList);
+		}
+		change_role("watch"); //$NON-NLS-1$
+		return (current_resList);
+	}
+
+	/**
+	 * Register this client as a watcher in the runtime.
+	 *
+	 * @return List of available resources
+	 * @throws DeploymentException
+	 */
+	public synchronized List<String> registerAsWatcher(final byte[] iv) throws DeploymentException {
 		JsonObject response = null;
 		final List<String> resList = new ArrayList<>();
-
 		if (iv != null) {
 			final JsonObject payload = getMessageBody("regwatch"); //$NON-NLS-1$
 			payload.addProperty("generation", Integer.valueOf(watch_gen)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-
-			cmd_relrole();
 			parseError(response);
 			for (final JsonElement res : response.get("resources").getAsJsonArray()) { //$NON-NLS-1$
 				resList.add(res.getAsString());
 			}
+			current_resList.clear();
+			current_resList = resList;
 		}
 		return (resList);
 	}
@@ -452,7 +472,6 @@ public class UAOClient {
 			payload.addProperty("path", entry_path); //$NON-NLS-1$
 			payload.addProperty("item_id", Integer.valueOf(id)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -476,7 +495,6 @@ public class UAOClient {
 			payload.addProperty("generation", Integer.valueOf(watch_gen)); //$NON-NLS-1$
 			payload.addProperty("item_id", Integer.valueOf(id)); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -505,10 +523,10 @@ public class UAOClient {
 			// NOTE: Removing the role release here speed up the watch loop
 			// cmd_relrole();
 			// HACK: Do not parse the error into an exception yet. This will allow
-			//		retry on status 400.
+			// retry on status 400.
 			// parseError(response);
 		}
-		return (new WatchResponse(responseList,response));
+		return (new WatchResponse(responseList, response));
 	}
 
 	/**
@@ -528,7 +546,6 @@ public class UAOClient {
 			payload.addProperty("resource", res); //$NON-NLS-1$
 			payload.addProperty("path", event_path); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -561,7 +578,6 @@ public class UAOClient {
 			payload.addProperty("resource", res); //$NON-NLS-1$
 			payload.add("variable", forceData); //$NON-NLS-1$
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 		return (checkResponse(response));
@@ -632,8 +648,14 @@ public class UAOClient {
 			if (timeoutms > 0) {
 				wsFactory.setConnectionTimeout(timeoutms);
 			}
+			if (withSsl) {
+				FordiacLogHelper.logInfo("UAOClient | setWebsocket | Configuring SSL"); //$NON-NLS-1$
+				final SSLContext context = SimpleSSLContext.getInstance("TLS"); //$NON-NLS-1$
+				wsFactory.setSSLContext(context);
+				wsFactory.setVerifyHostname(false);
+			}
 			websock = wsFactory.createSocket(endpoint);
-		} catch (final IOException e) {
+		} catch (final IOException | NoSuchAlgorithmException e) {
 			throw new DeploymentException(
 					MessageFormat.format(Messages.UAODeploymentExecutor_CreateClientFailed, e.getMessage()));
 		}
@@ -978,6 +1000,9 @@ public class UAOClient {
 		if (role.equals(current_role)) {
 			return (current_role_iv);
 		}
+		if (!current_role.isEmpty()) {
+			cmd_relrole();
+		}
 		final JsonObject nonce_result = cmd_rqnonce(role);
 
 		if (checkResponse(nonce_result)) {
@@ -990,6 +1015,9 @@ public class UAOClient {
 				if (checkResponse(role_result)) {
 					current_role = role;
 					current_role_iv = ivbytes;
+					if (role.equals("watch")) { //$NON-NLS-1$
+						registerAsWatcher(ivbytes);
+					}
 					return (ivbytes);
 				}
 			}
@@ -1009,6 +1037,7 @@ public class UAOClient {
 		if (checkResponse(response)) {
 			current_role = ""; //$NON-NLS-1$
 			current_role_iv = null;
+			current_resList.clear();
 		}
 		return (response);
 	}
@@ -1045,11 +1074,34 @@ public class UAOClient {
 			payload.addProperty("snapshot_guid", snapId); //$NON-NLS-1$
 
 			response = sendAndWaitResponse(payload);
-			cmd_relrole();
 			parseError(response);
 		}
 
 		return (response);
+	}
+
+	/**
+	 * Create the HTTP client connection correctly
+	 *
+	 * @param ssl Enable SSL on http
+	 * @return
+	 * @throws DeploymentException
+	 */
+	private static HttpClient createSimpleHttpClient(final boolean ssl) throws DeploymentException {
+		if (!ssl) {
+			return HttpClients.createDefault();
+		}
+		SSLContext sslContext = null;
+		try {
+			sslContext = new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build();
+		} catch (final Exception e) {
+			throw new DeploymentException(
+					MessageFormat.format(Messages.UAODeploymentExecutor_RequestInterrupted, e.getMessage()));
+		}
+		final SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext,
+				NoopHostnameVerifier.INSTANCE);
+		return HttpClientBuilder.create().setSSLSocketFactory(sslSocketFactory).build();
+
 	}
 
 	/**
@@ -1062,9 +1114,13 @@ public class UAOClient {
 	 */
 	private synchronized List<HttpResponse> sendFiles(final Map<String, byte[]> fileMap, final String snpId)
 			throws DeploymentException, ClientProtocolException, IOException {
-		final String httpEndpoint = String.format("http://%s/upload/", endpoint); //$NON-NLS-1$
+		String protocol = "http:"; //$NON-NLS-1$
+		if (withSsl) {
+			protocol = "https:"; //$NON-NLS-1$
+		}
+		final String httpEndpoint = String.format("%s//%s/upload/", protocol, endpoint); //$NON-NLS-1$
 
-		final CloseableHttpClient httpClient = HttpClients.createDefault();
+		final HttpClient httpClient = createSimpleHttpClient(withSsl);
 		final BasicCookieStore cookieStore = new BasicCookieStore();
 		final BasicHttpContext httpContext = new BasicHttpContext();
 		httpContext.setAttribute(HttpClientContext.COOKIE_STORE, cookieStore);

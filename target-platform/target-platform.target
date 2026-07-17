@@ -4,12 +4,12 @@
   <locations>
 		<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
 		  <repository location="https://download.eclipse.org/4diac/updates/rc/"/>
-		  <unit id="org.eclipse.equinox.p2.core.feature.feature.group" version="1.7.300.v20240801-1024"/>
+		  <unit id="org.eclipse.equinox.p2.core.feature.feature.group" version=""/> //1.7.300.v20240801-1024
 		  <unit id="org.eclipse.fordiac.ide.deployment.feature.feature.group" version=""/> // 3.0.0.202411110943 Remove version freeze due to constant development
 	  </location>
     <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-      <repository location="https://download.eclipse.org/releases/2024-03"/>
-      <unit id="org.eclipse.emf.sdk.feature.group" version="2.37.0.v20240203-1010"/>
+      <repository location="https://download.eclipse.org/releases/2026-06"/>
+      <unit id="org.eclipse.emf.sdk.feature.group" version="2.46.0.v20260425-0820"/>
     </location>
     <location includeDependencyDepth="infinite" includeDependencyScopes="compile" includeSource="true" missingManifest="generate" type="Maven">
       <feature id="com.asti.fordiac.deployment.websocket" label="Websocket Dependencies" provider-name="Aimirim" version="1.0.0.qualifier">

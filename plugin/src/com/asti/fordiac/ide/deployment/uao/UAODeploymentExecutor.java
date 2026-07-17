@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -58,6 +59,9 @@ import org.eclipse.fordiac.ide.model.libraryElement.FBNetworkElement;
 import org.eclipse.fordiac.ide.model.libraryElement.IInterfaceElement;
 import org.eclipse.fordiac.ide.model.libraryElement.Resource;
 import org.eclipse.fordiac.ide.model.libraryElement.VarDeclaration;
+import org.eclipse.fordiac.ide.model.typelibrary.DataTypeEntry;
+import org.eclipse.fordiac.ide.model.typelibrary.FBTypeEntry;
+import org.eclipse.fordiac.ide.model.typelibrary.GlobalConstantsEntry;
 import org.eclipse.fordiac.ide.ui.FordiacLogHelper;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -165,7 +169,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 					try {
 						success = client.authenticate();
 						if (success) {
-							client.registerAsWatcher();
 							break;
 						}
 					} catch (final DeploymentException e) {
@@ -224,12 +227,14 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void writeResourceParameter(final Resource resource, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeResourceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeResourceParameter
+		// "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
 	public void writeDeviceParameter(final Device device, final String parameter, final String value) {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter "+parameter+"="+value); //$NON-NLS-1$
+		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeDeviceParameter
+		// "+parameter+"="+value); //$NON-NLS-1$
 	}
 
 	@Override
@@ -248,12 +253,12 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void stopResource(final Resource res) {
-		// FordiacLogHelper.logWarning("UAODeploymentExecutor | stopResource "+res.getName()); //$NON-NLS-1$
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | stopResource
+		// "+res.getName()); //$NON-NLS-1$
 	}
 
 	@Override
 	public void createFBInstance(final FBDeploymentData fbData, final Resource res) throws DeploymentException {
-		// client.connectionCheck();
 		final FBNetworkElement fb = fbData.getFb();
 		Document fbt = null;
 		try {
@@ -276,39 +281,40 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void writeFBParameter(final Resource resource, final String value, final FBDeploymentData fbData,
 			final VarDeclaration varDecl) throws DeploymentException {
-		// client.connectionCheck();
-		final FBNetworkElement fb = fbData.getFb();
-
-		final String fbFullName = prefixUAO(fbData.getPrefix()) + fb.getName();
-		final Element fbFound = findFbByName(fbFullName);
-		if (fbFound != null) {
-			fbFound.appendChild(createParameter(varDecl.getName(), value));
-		}
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | writeFBParameter"
+		//     +res.getName()+" | "+fbData.getPrefix()+" | "+fbData.getFb().getName()+" | "+value); //$NON-NLS-1$
 	}
 
 	@Override
-	public void writeFBParameter(final Resource resource, final String destination, final String value) throws DeploymentException {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor | writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
+	public void writeFBParameter(final Resource resource, final String destination, final String value)
+			throws DeploymentException {
+		final String uaoPortPath[] = destination.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String fbName = prefixUAO(uaoPortPath[0]);
+		final String portName = uaoPortPath[1];
+
+        final Element fbFound = findFbByName(fbName);
+		if (fbFound != null) {
+			fbFound.appendChild(createParameter(portName, value));
+		}
 	}
 
 	@Override
 	public void createConnection(final Resource res, final ConnectionDeploymentData connData)
 			throws DeploymentException {
-		// client.connectionCheck();
-		final IInterfaceElement sourceData = connData.getSource();
-		final IInterfaceElement destinationData = connData.getDestination();
+		final IInterfaceElement sourceData = connData.source();
+		final IInterfaceElement destinationData = connData.destination();
 
-		if (sourceData == null || sourceData.getFBNetworkElement() == null || destinationData == null
-				|| destinationData.getFBNetworkElement() == null) {
+		if (sourceData == null || sourceData.getBlockFBNetworkElement() == null || destinationData == null
+				|| destinationData.getBlockFBNetworkElement() == null) {
 			throw new DeploymentException(MessageFormat
 					.format(Messages.UAODeploymentExecutor_CreateConnectionFailedNoDataFound, res.getName()));
 		}
 
-		final FBNetworkElement sourceFB = sourceData.getFBNetworkElement();
-		final FBNetworkElement destinationFB = destinationData.getFBNetworkElement();
-		final String source = String.format("%s%s.%s", prefixUAO(connData.getSourcePrefix()), sourceFB.getName(), //$NON-NLS-1$
+		final FBNetworkElement sourceFB = sourceData.getBlockFBNetworkElement();
+		final FBNetworkElement destinationFB = destinationData.getBlockFBNetworkElement();
+		final String source = String.format("%s%s.%s", prefixUAO(connData.sourcePrefix()), sourceFB.getName(), //$NON-NLS-1$
 				sourceData.getName());
-		final String destination = String.format("%s%s.%s", prefixUAO(connData.getDestinationPrefix()), //$NON-NLS-1$
+		final String destination = String.format("%s%s.%s", prefixUAO(connData.destinationPrefix()), //$NON-NLS-1$
 				destinationFB.getName(), destinationData.getName());
 
 		if (sourceData.getTypeName() == "Event" && destinationData.getTypeName() == "Event") { //$NON-NLS-1$ //$NON-NLS-2$
@@ -325,7 +331,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void startResource(final Resource resource) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		if (fbNetwork != null) {
 			// XXX: UAO Runtime does not have an implicit START block. It needs to be
@@ -341,26 +346,27 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			// Start deploy
 			client.deploy(deployXml, projectGuid, snapshotGuid);
 			final String to = client.getDeviceState();
-			FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \""+resource.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \"" + resource.getName() + "\" state from [" //$NON-NLS-1$ //$NON-NLS-2$
+					+ from + "] to [" + to + "]"); //$NON-NLS-1$
 		}
 	}
 
 	@Override
 	public void startDevice(final Device dev) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.flow_command("start"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Device \""+dev.getName()+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		FordiacLogHelper.logInfo(
+				"UAODeploymentExecutor | Device \"" + dev.getName() + "\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
 	public void deleteResource(final String resName) throws DeploymentException {
-		// client.connectionCheck();
 		final String from = client.getDeviceState();
 		client.flow_command("clean"); //$NON-NLS-1$
 		final String to = client.getDeviceState();
-		FordiacLogHelper.logInfo("UAODeploymentExecutor | Resource \""+resName+"\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		FordiacLogHelper.logInfo(
+				"UAODeploymentExecutor | Resource \"" + resName + "\" state from [" + from + "] to [" + to + "]"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 
 	@Override
@@ -379,14 +385,12 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void killDevice(final Device dev) throws DeploymentException {
-		// client.connectionCheck();
 		client.reboot();
 	}
 
 	@Override
 	public List<org.eclipse.fordiac.ide.deployment.devResponse.Resource> queryResources() throws DeploymentException {
-		// client.connectionCheck();
-		List<String> reslist = client.registerAsWatcher();
+		final List<String> reslist = client.getResourceList();
 		if (reslist == null || reslist.isEmpty()) {
 			return Collections.emptyList();
 		}
@@ -402,7 +406,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public Response readWatches() throws DeploymentException {
 		fetchCount += 1;
-		// client.connectionCheck();
 		WatchResponse resp = null;
 		JsonArray forceResponse = new JsonArray();
 		if (!watch_items.isEmpty()) {
@@ -410,23 +413,24 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 				if (!watch_items.get(res.getName()).isEmpty()) {
 					try {
 						resp = client.fetchWatches(res.getName());
-						if (resp.getResponse().get("result").getAsInt()==400) { //$NON-NLS-1$
+						if (resp.getResponse().get("result").getAsInt() == 400) { //$NON-NLS-1$
 							FordiacLogHelper.logInfo("UAODeploymentExecutor | readWatches | Runtime is busy."); //$NON-NLS-1$
 						} else {
 							UAOClient.parseError(resp.getResponse());
 						}
 						forceResponse = client.forceQuery(res.getName());
-						fetchErrorCount=0; // Reset errors
+						fetchErrorCount = 0; // Reset errors
 					} catch (final DeploymentException e) {
-						fetchErrorCount+=1;
-						if (fetchErrorCount>MAX_FETCH_RETRY){
+						fetchErrorCount += 1;
+						if (fetchErrorCount > MAX_FETCH_RETRY) {
 							FordiacLogHelper.logError(e.getMessage());
 							throw e;
 						}
-						FordiacLogHelper.logWarning(e.getMessage()+" Retry attempt "+fetchErrorCount+" of "+MAX_FETCH_RETRY+"."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+						FordiacLogHelper.logWarning(
+								e.getMessage() + " Retry attempt " + fetchErrorCount + " of " + MAX_FETCH_RETRY + "."); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					}
 					int wlid = 0;
-					if (resp!=null) {
+					if (resp != null) {
 						for (final String value : resp.getWatches()) {
 							watch_items.get(res.getName()).get(wlid).setValue(value);
 							wlid += 1;
@@ -448,7 +452,7 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 		}
 		Response watches = Constants.EMPTY_RESPONSE;
 		try {
-			if (resp!=null) {
+			if (resp != null) {
 				watches = parseWatchResponse(watch_items, fetchCount);
 			}
 		} catch (final IOException | TransformerException e) {
@@ -459,7 +463,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public boolean addWatch(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -484,7 +487,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public boolean removeWatch(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String resName = resource.getName();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = prefixUAO(uaoPortPath[0]);
@@ -512,7 +514,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void triggerEvent(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -532,7 +533,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void forceValue(final Resource resource, final String name, final String value) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -555,7 +555,6 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 
 	@Override
 	public void clearForce(final Resource resource, final String name) throws DeploymentException {
-		// client.connectionCheck();
 		final String uaoPortPath[] = name.split("[.](?=[^.]*$)"); //$NON-NLS-1$
 		final String fbName = uaoPortPath[0];
 		final String portName = uaoPortPath[1];
@@ -921,6 +920,34 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 			e.printStackTrace();
 		}
 		return (doc);
+	}
+
+	@Override
+	public Response queryFBType(final FBTypeEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public Response queryDataType(final DataTypeEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public Response queryGlobalConstType(final GlobalConstantsEntry entry) throws DeploymentException {
+		fetchCount += 1;
+		return Constants.EMPTY_RESPONSE;
+	}
+
+	@Override
+	public void readTraces(final Device device, final String path) throws DeploymentException {
+		throw new UnsupportedOperationException(Messages.UAODeploymentExecutor_CommandNotImplemented);
+	}
+
+	@Override
+	public Optional<String> replayNextEvent(final Resource resource) throws DeploymentException {
+		throw new UnsupportedOperationException(Messages.UAODeploymentExecutor_CommandNotImplemented);
 	}
 
 }
