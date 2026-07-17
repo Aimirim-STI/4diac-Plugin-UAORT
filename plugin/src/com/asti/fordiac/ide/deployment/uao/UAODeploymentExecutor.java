@@ -281,20 +281,21 @@ public class UAODeploymentExecutor implements IDeviceManagementInteractor {
 	@Override
 	public void writeFBParameter(final Resource resource, final String value, final FBDeploymentData fbData,
 			final VarDeclaration varDecl) throws DeploymentException {
-		final FBNetworkElement fb = fbData.getFb();
-
-		final String fbFullName = prefixUAO(fbData.getPrefix()) + fb.getName();
-		final Element fbFound = findFbByName(fbFullName);
-		if (fbFound != null) {
-			fbFound.appendChild(createParameter(varDecl.getName(), value));
-		}
+		// FordiacLogHelper.logWarning("UAODeploymentExecutor | writeFBParameter"
+		//     +res.getName()+" | "+fbData.getPrefix()+" | "+fbData.getFb().getName()+" | "+value); //$NON-NLS-1$
 	}
 
 	@Override
 	public void writeFBParameter(final Resource resource, final String destination, final String value)
 			throws DeploymentException {
-		// FordiacLogHelper.logInfo("UAODeploymentExecutor |
-		// writeFBParameter"+destination+"->"+value); //$NON-NLS-1$
+		final String uaoPortPath[] = destination.split("[.](?=[^.]*$)"); //$NON-NLS-1$
+		final String fbName = prefixUAO(uaoPortPath[0]);
+		final String portName = uaoPortPath[1];
+
+        final Element fbFound = findFbByName(fbName);
+		if (fbFound != null) {
+			fbFound.appendChild(createParameter(portName, value));
+		}
 	}
 
 	@Override
